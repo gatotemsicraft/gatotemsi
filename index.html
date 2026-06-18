@@ -3,259 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 2D Platformer</title>
+    <title>Super Fishing Simulator 2D</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a1a;
-            color: white;
-            font-family: sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            user-select: none;
         }
-        h1 { margin: 5px; font-size: 18px; }
-        p { margin: 5px; font-size: 12px; color: #aaa; }
+        h1 { margin: 10px 0; color: #4ade80; }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            border: 4px solid #4ade80;
+            border-radius: 8px;
+            overflow: hidden;
+        }
         canvas {
-            border: 4px solid #fff;
-            background-color: #87CEEB;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            max-width: 100%;
+            background: linear-gradient(to bottom, #7dd3fc 0%, #38bdf8 40%, #0284c7 40%, #075985 100%);
         }
-        .btn-container {
-            margin-top: 10px;
+        .ui-panel {
             display: flex;
-            gap: 10px;
-        }
-        button {
-            padding: 10px 15px;
-            font-weight: bold;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        /* Tombol Kontrol HP */
-        .mobile-controls {
-            display: flex;
-            gap: 20px;
+            width: 800px;
+            justify-content: space-between;
             margin-top: 15px;
+            background: #16213e;
+            padding: 15px;
+            border-radius: 8px;
+            box-sizing: border-box;
         }
-        .move-btns { display: flex; gap: 10px; }
-        .control-btn {
-            width: 60px;
-            height: 60px;
-            background-color: #555;
-            color: white;
-            border: 2px solid #fff;
-            border-radius: 10px;
-            font-size: 20px;
+        .btn {
+            background: #4ade80;
+            color: #111827;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.2s;
         }
-        .control-btn:active { background-color: #222; }
+        .btn:hover { background: #22c55e; }
+        .btn:disabled { background: #4b5563; cursor: not-allowed; }
+        .shop-item {
+            background: #1f4068;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 250px;
+        }
+        #inventory {
+            max-height: 120px;
+            overflow-y: auto;
+            width: 200px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Minecraft 2D: Wanderer</h1>
-    <p>Gunakan tombol di layar (HP) atau Arrow/A-D-W (PC) untuk bergerak & lompat</p>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    
-    <div class="btn-container">
-        <button onclick="resetDunia()">Acak Dunia Baru 🎲</button>
+    <h1>🎣 Super Fishing Simulator 2D</h1>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
 
-    <!-- Kontrol Khusus Layar Sentuh HP -->
-    <div class="mobile-controls">
-        <div class="move-btns">
-            <div class="control-btn" id="btnLeft">◀</div>
-            <div class="control-btn" id="btnRight">▶</div>
+    <div class="ui-panel">
+        <div>
+            <h3>Status & Kontrol</h3>
+            <p>Dompet: <strong style="color: #f59e0b;">$<span id="money">0</span></strong></p>
+            <p>Status: <span id="status" style="font-weight: bold; color: #38bdf8;">Santai di Dermaga</span></p>
+            <button id="actionBtn" class="btn" onclick="handleAction()">Lempar Umpan</button>
         </div>
-        <div class="control-btn" id="btnJump">▲</div>
+
+        <div>
+            <h3>Keranjang Ikan (<span id="inv-count">0</span>/5)</h3>
+            <div id="inventory">Ekstra kosong...</div>
+            <button id="sellBtn" class="btn" style="background: #f59e0b; margin-top: 5px;" onclick="sellAllFish()" disabled>Jual Semua Ikan</button>
+        </div>
+
+        <div>
+            <h3>Toko Alat 🛒</h3>
+            <div class="shop-item">
+                <span>Joran Pro ($50)<br><small>Narik ikan +30% cepat</small></span>
+                <button class="btn" id="upgradeRodBtn" onclick="buyUpgrade('rod', 50)">Beli</button>
+            </div>
+            <div class="shop-item">
+                <span>Umpan Mistis ($100)<br><small>Peluang Legendary naik</small></span>
+                <button class="btn" id="upgradeBaitBtn" onclick="buyUpgrade('bait', 100)">Beli</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const BLOCK_SIZE = 20;
-        const COLS = canvas.width / BLOCK_SIZE; // 40
-        const ROWS = canvas.height / BLOCK_SIZE; // 20
+        // State Game
+        let money = 0;
+        let gameState = 'idle'; // idle, fishing, biting, caught
+        let inventory = [];
+        const maxInventory = 5;
 
-        // Data Dunia (Grid 2D)
-        let worldGrid = [];
+        // Upgrade Level
+        let rodLevel = 1;
+        let baitLevel = 1;
 
-        // --- DATA PLAYER ---
-        let player = {
-            x: 100,
-            y: 50,
-            width: 16,
-            height: 16,
-            vx: 0,
-            vy: 0,
-            speed: 3,
-            jumpForce: 8,
-            grounded: false
-        };
+        // Variabel animasi / mekanik
+        let fishTimer = 0;
+        let biteWindow = 0;
+        let bobberY = 160;
+        let waveOffset = 0;
 
-        const gravity = 0.4;
+        // Database Jenis Ikan
+        const fishDatabase = [
+            { name: 'Lele Domestik', price: 10, rarity: 'Common', color: '#64748b' },
+            { name: 'Nila Biru', price: 25, rarity: 'Rare', color: '#3b82f6' },
+            { name: 'Arwana Emas', price: 100, rarity: 'Legendary', color: '#eab308' }
+        ];
 
-        // Input Keyboard (PC)
-        let keys = {};
-        window.addEventListener("keydown", (e) => { keys[e.key] = true; });
-        window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+        let currentFish = null;
 
-        // Input Tombol (HP)
-        let touchLeft = false, touchRight = false, touchJump = false;
-        setupMobileControls();
-
-        function generateWorld() {
-            worldGrid = Array(COLS).fill(null).map(() => Array(ROWS).fill(0));
-            let currentHeight = Math.floor(ROWS / 2);
-
-            for (let x = 0; x < COLS; x++) {
-                const rand = Math.random();
-                if (rand < 0.25) currentHeight++;
-                else if (rand < 0.5) currentHeight--;
-                
-                if (currentHeight < 6) currentHeight = 6;
-                if (currentHeight > ROWS - 4) currentHeight = ROWS - 4;
-
-                for (let y = 0; y < ROWS; y++) {
-                    if (y === currentHeight) {
-                        worldGrid[x][y] = 1; // Rumput
-                    } else if (y > currentHeight && y < currentHeight + 4) {
-                        worldGrid[x][y] = 2; // Tanah
-                    } else if (y >= currentHeight + 4) {
-                        worldGrid[x][y] = 3; // Batu
-                        if (y === ROWS - 1) worldGrid[x][y] = 4; // Bedrock
-                    }
-                }
-            }
-        }
-
-        function resetDunia() {
-            generateWorld();
-            player.x = 100;
-            player.y = 20;
-            player.vx = 0;
-            player.vy = 0;
-        }
-
-        // Fungsi cek tabrakan (AABB Collision)
-        function checkCollision(px, py) {
-            let leftBlock = Math.floor(px / BLOCK_SIZE);
-            let rightBlock = Math.floor((px + player.width) / BLOCK_SIZE);
-            let topBlock = Math.floor(py / BLOCK_SIZE);
-            let bottomBlock = Math.floor((py + player.height) / BLOCK_SIZE);
-
-            if (leftBlock < 0 || rightBlock >= COLS || topBlock < 0 || bottomBlock >= ROWS) {
-                return true; 
-            }
-
-            for (let x = leftBlock; x <= rightBlock; x++) {
-                for (let y = topBlock; y <= bottomBlock; y++) {
-                    if (worldGrid[x][y] > 0) { // Jika ada blok padat
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
+        // Game Loop Utama (Untuk Grafis 2D)
         function update() {
-            // Pergerakan Kiri / Kanan
-            player.vx = 0;
-            if (keys["ArrowLeft"] || keys["a"] || keys["A"] || touchLeft) player.vx = -player.speed;
-            if (keys["ArrowRight"] || keys["d"] || keys["D"] || touchRight) player.vx = player.speed;
-
-            // Lompat
-            if ((keys["ArrowUp"] || keys["w"] || keys["W"] || touchJump) && player.grounded) {
-                player.vy = -player.jumpForce;
-                player.grounded = false;
-            }
-
-            // Aplikasikan Gravitasi
-            player.vy += gravity;
-
-            // Update Posisi X & Cek Tabrakan Dinding
-            player.x += player.vx;
-            if (checkCollision(player.x, player.y)) {
-                player.x -= player.vx; // Mentok, balikin posisi
-            }
-
-            // Update Posisi Y & Cek Tabrakan Tanah/Atap
-            player.y += player.vy;
-            player.grounded = false;
-            if (checkCollision(player.x, player.y)) {
-                player.y -= player.vy;
-                
-                if (player.vy > 0) {
-                    player.grounded = true; // Player mendarat di tanah
-                }
-                player.vy = 0;
-            }
-        }
-
-        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            waveOffset += 0.05;
 
-            // Gambar Dunia Berdasarkan Array Grid
-            for (let x = 0; x < COLS; x++) {
-                for (let y = 0; y < ROWS; y++) {
-                    if (worldGrid[x][y] === 1) {
-                        ctx.fillStyle = "#55dd33"; // Rumput
-                    } else if (worldGrid[x][y] === 2) {
-                        ctx.fillStyle = "#8B5A2B"; // Tanah
-                    } else if (worldGrid[x][y] === 3) {
-                        ctx.fillStyle = "#737373"; // Batu
-                    } else if (worldGrid[x][y] === 4) {
-                        ctx.fillStyle = "#111111"; // Bedrock
-                    } else {
-                        continue;
-                    }
-                    ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            // 1. Gambar Langit & Awan fungsional
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(100, 60, 30, 0, Math.PI * 2);
+            ctx.arc(140, 50, 40, 0, Math.PI * 2);
+            ctx.arc(180, 60, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. Gambar Dermaga & Nelayan (Kotak representatif bergaya siluet)
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(0, 140, 120, 20); // Dermaga
+            ctx.fillRect(40, 100, 20, 40); // Badan Nelayan
+            
+            // Joran Pancing
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(55, 105);
+            if (gameState === 'idle') {
+                ctx.lineTo(90, 80);
+            } else {
+                ctx.lineTo(150, 120);
+                // Tali Pancing
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                ctx.lineTo(180, bobberY);
+            }
+            ctx.stroke();
+
+            // 3. Air Laut Bergelombang
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            ctx.moveTo(0, 160);
+            for (let x = 0; x <= canvas.width; x += 10) {
+                let y = 160 + Math.sin(x * 0.03 + waveOffset) * 5;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.fill();
+
+            // 4. Mekanisme Pelampung (Bobber)
+            if (gameState !== 'idle') {
+                ctx.fillStyle = gameState === 'biting' ? '#ef4444' : '#ffffff';
+                ctx.beginPath();
+                ctx.arc(180, bobberY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Efek riak air kalau ikan menggigit
+                if (gameState === 'biting') {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(180, bobberY + 5, (Date.now() % 30) * 0.8, 0, Math.PI * 2);
+                    ctx.stroke();
                 }
             }
 
-            // Gambar Karakter Player (Kotak Biru Keren)
-            ctx.fillStyle = "#00a2ff";
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            // Detail Mata Player
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(player.x + (player.vx >= 0 ? 10 : 2), player.y + 3, 4, 4);
+            // Logic game per frame
+            if (gameState === 'fishing') {
+                fishTimer -= 1;
+                if (fishTimer <= 0) {
+                    triggerBite();
+                }
+            } else if (gameState === 'biting') {
+                biteWindow -= 1;
+                bobberY = 165 + Math.sin(Date.now() * 0.05) * 4; // Pelampung gerak-gerak turun
+                if (biteWindow <= 0) {
+                    missFish();
+                }
+            }
+
+            requestAnimationFrame(update);
         }
 
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+        // Aksi Tombol Utama
+        function handleAction() {
+            if (gameState === 'idle') {
+                if (inventory.length >= maxInventory) {
+                    alert("Keranjang kamu penuh! Jual ikan dulu.");
+                    return;
+                }
+                // Lempar Umpan
+                gameState = 'fishing';
+                bobberY = 160;
+                document.getElementById('status').innerText = 'Menunggu Umpan Dimakan...';
+                document.getElementById('status').style.color = '#eab308';
+                document.getElementById('actionBtn').innerText = 'TARIK!';
+                
+                // Waktu tunggu random, dipengaruhi oleh Rod Level
+                fishTimer = Math.max(60, 200 - (rodLevel * 40) + Math.random() * 100);
+            } else if (gameState === 'biting') {
+                // Berhasil Narik Ikan!
+                catchFish();
+            } else if (gameState === 'fishing') {
+                // Tarik kepagian
+                missFish();
+            }
         }
 
-        function setupMobileControls() {
-            const l = document.getElementById("btnLeft");
-            const r = document.getElementById("btnRight");
-            const j = document.getElementById("btnJump");
-
-            l.addEventListener("touchstart", (e) => { e.preventDefault(); touchLeft = true; });
-            l.addEventListener("touchend", () => { touchLeft = false; });
-            r.addEventListener("touchstart", (e) => { e.preventDefault(); touchRight = true; });
-            r.addEventListener("touchend", () => { touchRight = false; });
-            j.addEventListener("touchstart", (e) => { e.preventDefault(); touchJump = true; });
-            j.addEventListener("touchend", () => { touchJump = false; });
+        function triggerBite() {
+            gameState = 'biting';
+            document.getElementById('status').innerText = 'ADA IKAN NYANGKUT! CEPET TARIK!';
+            document.getElementById('status').style.color = '#ef4444';
+            
+            // Waktu respons cepat/lambat
+            biteWindow = 60 + Math.random() * 40;
         }
 
-        // Jalankan game
-        generateWorld();
-        gameLoop();
+        function catchFish() {
+            gameState = 'idle';
+            bobberY = 160;
+            
+            // Tentukan ikan berdasarkan umpan
+            let rand = Math.random() * 100;
+            if (baitLevel > 1) rand += 15; // Naikin kemungkinan dapet ikan langka
+
+            let fish;
+            if (rand > 85) fish = fishDatabase[2]; // Legendary
+            else if (rand > 50) fish = fishDatabase[1]; // Rare
+            else fish = fishDatabase[0]; // Common
+
+            inventory.push(fish);
+            
+            document.getElementById('status').innerText = `🎉 Berhasil Dapat: ${fish.name} (${fish.rarity})!`;
+            document.getElementById('status').style.color = '#4ade80';
+            document.getElementById('actionBtn').innerText = 'Lempar Umpan';
+            
+            updateUI();
+        }
+
+        function missFish() {
+            gameState = 'idle';
+            bobberY = 160;
+            document.getElementById('status').innerText = 'Yah... Ikannya kabur/Zonk coks.';
+            document.getElementById('status').style.color = '#9ca3af';
+            document.getElementById('actionBtn').innerText = 'Lempar Umpan';
+        }
+
+        // Sistem Jual Ikan
+        function sellAllFish() {
+            let totalEarnings = 0;
+            inventory.forEach(fish => {
+                totalEarnings += fish.price;
+            });
+            money += totalEarnings;
+            inventory = [];
+            alert(`Semua ikan terjual! Kamu dapat $${totalEarnings}`);
+            updateUI();
+        }
+
+        // Sistem Upgrade Toko
+        function buyUpgrade(type, cost) {
+            if (money >= cost) {
+                money -= cost;
+                if (type === 'rod') {
+                    rodLevel++;
+                    document.getElementById('upgradeRodBtn').disabled = true;
+                    document.getElementById('upgradeRodBtn').innerText = 'MAX';
+                } else if (type === 'bait') {
+                    baitLevel++;
+                    document.getElementById('upgradeBaitBtn').disabled = true;
+                    document.getElementById('upgradeBaitBtn').innerText = 'MAX';
+                }
+                updateUI();
+                alert('Upgrade berhasil dibeli!');
+            } else {
+                alert('Duit lu kurang, rajin mancing lagi!');
+            }
+        }
+
+        // Update Interface
+        function updateUI() {
+            document.getElementById('money').innerText = money;
+            document.getElementById('inv-count').innerText = inventory.length;
+            
+            // Update daftar list keranjang ikan
+            const invDiv = document.getElementById('inventory');
+            if (inventory.length === 0) {
+                invDiv.innerHTML = 'Keranjang kosong...';
+                document.getElementById('sellBtn').disabled = true;
+            } else {
+                document.getElementById('sellBtn').disabled = false;
+                invDiv.innerHTML = inventory.map(f => `
+                    <div style="color: ${f.color}; font-weight: 500;">
+                        • ${f.name} ($${f.price})
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Jalankan animasi game
+        update();
     </script>
 </body>
 </html>
