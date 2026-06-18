@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini 2D Terrain Generator</title>
+    <title>Minecraft 2D Platformer</title>
     <style>
         body {
             margin: 0;
@@ -16,24 +16,23 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            overflow: hidden;
+            user-select: none;
         }
-        h1 {
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
+        h1 { margin: 5px; font-size: 18px; }
+        p { margin: 5px; font-size: 12px; color: #aaa; }
         canvas {
             border: 4px solid #fff;
-            background-color: #87CEEB; /* Warna Langit */
+            background-color: #87CEEB;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             max-width: 100%;
         }
-        .controls {
-            margin-top: 15px;
+        .btn-container {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 10px 15px;
             font-weight: bold;
             background-color: #4CAF50;
             color: white;
@@ -41,94 +40,222 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        button:hover {
-            background-color: #45a049;
+        /* Tombol Kontrol HP */
+        .mobile-controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
         }
+        .move-btns { display: flex; gap: 10px; }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background-color: #555;
+            color: white;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .control-btn:active { background-color: #222; }
     </style>
 </head>
 <body>
 
-    <h1>Mini 2D Terrain Generator (Konsep Minecraft)</h1>
+    <h1>Minecraft 2D: Wanderer</h1>
+    <p>Gunakan tombol di layar (HP) atau Arrow/A-D-W (PC) untuk bergerak & lompat</p>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     
-    <div class="controls">
-        <button onclick="generateTerrain()">Generate Dunia Baru 🎲</button>
+    <div class="btn-container">
+        <button onclick="resetDunia()">Acak Dunia Baru 🎲</button>
+    </div>
+
+    <!-- Kontrol Khusus Layar Sentuh HP -->
+    <div class="mobile-controls">
+        <div class="move-btns">
+            <div class="control-btn" id="btnLeft">◀</div>
+            <div class="control-btn" id="btnRight">▶</div>
+        </div>
+        <div class="control-btn" id="btnJump">▲</div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        const BLOCK_SIZE = 20; // Ukuran satu kotak blok (piksel)
-        const COLS = canvas.width / BLOCK_SIZE; // 40 Kolom
-        const ROWS = canvas.height / BLOCK_SIZE; // 20 Baris
+        const BLOCK_SIZE = 20;
+        const COLS = canvas.width / BLOCK_SIZE; // 40
+        const ROWS = canvas.height / BLOCK_SIZE; // 20
 
-        function generateTerrain() {
-            // Bersihkan layar langit
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Data Dunia (Grid 2D)
+        let worldGrid = [];
 
-            // Titik awal tinggi tanah acak di tengah-tengah canvas
-            let currentHeight = Math.floor(ROWS / 2); 
+        // --- DATA PLAYER ---
+        let player = {
+            x: 100,
+            y: 50,
+            width: 16,
+            height: 16,
+            vx: 0,
+            vy: 0,
+            speed: 3,
+            jumpForce: 8,
+            grounded: false
+        };
 
-            // Loop dari kiri ke kanan (kolom demi kolom)
+        const gravity = 0.4;
+
+        // Input Keyboard (PC)
+        let keys = {};
+        window.addEventListener("keydown", (e) => { keys[e.key] = true; });
+        window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+        // Input Tombol (HP)
+        let touchLeft = false, touchRight = false, touchJump = false;
+        setupMobileControls();
+
+        function generateWorld() {
+            worldGrid = Array(COLS).fill(null).map(() => Array(ROWS).fill(0));
+            let currentHeight = Math.floor(ROWS / 2);
+
             for (let x = 0; x < COLS; x++) {
-                
-                // --- SISTEM RANDOM GENERATION (Perubahan Tinggi Tanah) ---
-                // Mengacak apakah tanah selanjutnya naik, turun, atau tetap
                 const rand = Math.random();
-                if (rand < 0.3) {
-                    currentHeight++; // Tanah turun
-                } else if (rand < 0.6) {
-                    currentHeight--; // Tanah naik
-                }
-                // Batasi agar tanah tidak terlalu tinggi ke langit atau tenggelam ke bawah
-                if (currentHeight < 5) currentHeight = 5;
-                if (currentHeight > ROWS - 3) currentHeight = ROWS - 3;
+                if (rand < 0.25) currentHeight++;
+                else if (rand < 0.5) currentHeight--;
+                
+                if (currentHeight < 6) currentHeight = 6;
+                if (currentHeight > ROWS - 4) currentHeight = ROWS - 4;
 
-                // Loop dari atas ke bawah untuk menggambar blok pada kolom x
                 for (let y = 0; y < ROWS; y++) {
                     if (y === currentHeight) {
-                        // Blok Paling Atas = Rumput (Hijau)
-                        ctx.fillStyle = "#55dd33"; 
-                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                        
-                        // Iseng kasih random pohon di atas rumput
-                        if (Math.random() < 0.15 && x > 1 && x < COLS - 2) {
-                            tumbuhkanPohon(x, y);
-                        }
+                        worldGrid[x][y] = 1; // Rumput
                     } else if (y > currentHeight && y < currentHeight + 4) {
-                        // Blok Bawah Rumput = Tanah/Dirt (Cokelat)
-                        ctx.fillStyle = "#8B5A2B"; 
-                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        worldGrid[x][y] = 2; // Tanah
                     } else if (y >= currentHeight + 4) {
-                        // Blok Lebih Dalam = Batu/Stone (Abu-abu)
-                        ctx.fillStyle = "#737373"; 
-                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                        
-                        // Bedrock paling bawah (Hitam)
-                        if(y === ROWS - 1) {
-                            ctx.fillStyle = "#111111";
-                            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                        }
+                        worldGrid[x][y] = 3; // Batu
+                        if (y === ROWS - 1) worldGrid[x][y] = 4; // Bedrock
                     }
                 }
             }
         }
 
-        // Fungsi pembantu buat generate struktur pohon acak
-        function tumbuhkanPohon(x, y) {
-            ctx.fillStyle = "#5C4033"; // Batang kayu cokelat tua
-            ctx.fillRect(x * BLOCK_SIZE, (y - 1) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-            ctx.fillRect(x * BLOCK_SIZE, (y - 2) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-            
-            ctx.fillStyle = "#228B22"; // Daun pohon hijau tua
-            ctx.fillRect((x - 1) * BLOCK_SIZE, (y - 3) * BLOCK_SIZE, BLOCK_SIZE * 3, BLOCK_SIZE);
-            ctx.fillRect(x * BLOCK_SIZE, (y - 4) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        function resetDunia() {
+            generateWorld();
+            player.x = 100;
+            player.y = 20;
+            player.vx = 0;
+            player.vy = 0;
         }
 
-        // Generate dunia pertama kali saat web dibuka
-        generateTerrain();
+        // Fungsi cek tabrakan (AABB Collision)
+        function checkCollision(px, py) {
+            let leftBlock = Math.floor(px / BLOCK_SIZE);
+            let rightBlock = Math.floor((px + player.width) / BLOCK_SIZE);
+            let topBlock = Math.floor(py / BLOCK_SIZE);
+            let bottomBlock = Math.floor((py + player.height) / BLOCK_SIZE);
+
+            if (leftBlock < 0 || rightBlock >= COLS || topBlock < 0 || bottomBlock >= ROWS) {
+                return true; 
+            }
+
+            for (let x = leftBlock; x <= rightBlock; x++) {
+                for (let y = topBlock; y <= bottomBlock; y++) {
+                    if (worldGrid[x][y] > 0) { // Jika ada blok padat
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function update() {
+            // Pergerakan Kiri / Kanan
+            player.vx = 0;
+            if (keys["ArrowLeft"] || keys["a"] || keys["A"] || touchLeft) player.vx = -player.speed;
+            if (keys["ArrowRight"] || keys["d"] || keys["D"] || touchRight) player.vx = player.speed;
+
+            // Lompat
+            if ((keys["ArrowUp"] || keys["w"] || keys["W"] || touchJump) && player.grounded) {
+                player.vy = -player.jumpForce;
+                player.grounded = false;
+            }
+
+            // Aplikasikan Gravitasi
+            player.vy += gravity;
+
+            // Update Posisi X & Cek Tabrakan Dinding
+            player.x += player.vx;
+            if (checkCollision(player.x, player.y)) {
+                player.x -= player.vx; // Mentok, balikin posisi
+            }
+
+            // Update Posisi Y & Cek Tabrakan Tanah/Atap
+            player.y += player.vy;
+            player.grounded = false;
+            if (checkCollision(player.x, player.y)) {
+                player.y -= player.vy;
+                
+                if (player.vy > 0) {
+                    player.grounded = true; // Player mendarat di tanah
+                }
+                player.vy = 0;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Gambar Dunia Berdasarkan Array Grid
+            for (let x = 0; x < COLS; x++) {
+                for (let y = 0; y < ROWS; y++) {
+                    if (worldGrid[x][y] === 1) {
+                        ctx.fillStyle = "#55dd33"; // Rumput
+                    } else if (worldGrid[x][y] === 2) {
+                        ctx.fillStyle = "#8B5A2B"; // Tanah
+                    } else if (worldGrid[x][y] === 3) {
+                        ctx.fillStyle = "#737373"; // Batu
+                    } else if (worldGrid[x][y] === 4) {
+                        ctx.fillStyle = "#111111"; // Bedrock
+                    } else {
+                        continue;
+                    }
+                    ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+
+            // Gambar Karakter Player (Kotak Biru Keren)
+            ctx.fillStyle = "#00a2ff";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Detail Mata Player
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(player.x + (player.vx >= 0 ? 10 : 2), player.y + 3, 4, 4);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function setupMobileControls() {
+            const l = document.getElementById("btnLeft");
+            const r = document.getElementById("btnRight");
+            const j = document.getElementById("btnJump");
+
+            l.addEventListener("touchstart", (e) => { e.preventDefault(); touchLeft = true; });
+            l.addEventListener("touchend", () => { touchLeft = false; });
+            r.addEventListener("touchstart", (e) => { e.preventDefault(); touchRight = true; });
+            r.addEventListener("touchend", () => { touchRight = false; });
+            j.addEventListener("touchstart", (e) => { e.preventDefault(); touchJump = true; });
+            j.addEventListener("touchend", () => { touchJump = false; });
+        }
+
+        // Jalankan game
+        generateWorld();
+        gameLoop();
     </script>
 </body>
 </html>
-
