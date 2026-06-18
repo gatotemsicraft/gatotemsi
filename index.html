@@ -3,36 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Website</title>
+    <title>Mini 2D Terrain Generator</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
-        }
-        .box {
-            background-color: white;
-            padding: 30px 50px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
         }
         h1 {
-            color: #333;
-            font-size: 2.5rem;
-            margin: 0;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        canvas {
+            border: 4px solid #fff;
+            background-color: #87CEEB; /* Warna Langit */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 100%;
+        }
+        .controls {
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h1>hai mbambut neymar six seven 😛</h1>
+    <h1>Mini 2D Terrain Generator (Konsep Minecraft)</h1>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">
+        <button onclick="generateTerrain()">Generate Dunia Baru 🎲</button>
     </div>
 
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const BLOCK_SIZE = 20; // Ukuran satu kotak blok (piksel)
+        const COLS = canvas.width / BLOCK_SIZE; // 40 Kolom
+        const ROWS = canvas.height / BLOCK_SIZE; // 20 Baris
+
+        function generateTerrain() {
+            // Bersihkan layar langit
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Titik awal tinggi tanah acak di tengah-tengah canvas
+            let currentHeight = Math.floor(ROWS / 2); 
+
+            // Loop dari kiri ke kanan (kolom demi kolom)
+            for (let x = 0; x < COLS; x++) {
+                
+                // --- SISTEM RANDOM GENERATION (Perubahan Tinggi Tanah) ---
+                // Mengacak apakah tanah selanjutnya naik, turun, atau tetap
+                const rand = Math.random();
+                if (rand < 0.3) {
+                    currentHeight++; // Tanah turun
+                } else if (rand < 0.6) {
+                    currentHeight--; // Tanah naik
+                }
+                // Batasi agar tanah tidak terlalu tinggi ke langit atau tenggelam ke bawah
+                if (currentHeight < 5) currentHeight = 5;
+                if (currentHeight > ROWS - 3) currentHeight = ROWS - 3;
+
+                // Loop dari atas ke bawah untuk menggambar blok pada kolom x
+                for (let y = 0; y < ROWS; y++) {
+                    if (y === currentHeight) {
+                        // Blok Paling Atas = Rumput (Hijau)
+                        ctx.fillStyle = "#55dd33"; 
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Iseng kasih random pohon di atas rumput
+                        if (Math.random() < 0.15 && x > 1 && x < COLS - 2) {
+                            tumbuhkanPohon(x, y);
+                        }
+                    } else if (y > currentHeight && y < currentHeight + 4) {
+                        // Blok Bawah Rumput = Tanah/Dirt (Cokelat)
+                        ctx.fillStyle = "#8B5A2B"; 
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    } else if (y >= currentHeight + 4) {
+                        // Blok Lebih Dalam = Batu/Stone (Abu-abu)
+                        ctx.fillStyle = "#737373"; 
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Bedrock paling bawah (Hitam)
+                        if(y === ROWS - 1) {
+                            ctx.fillStyle = "#111111";
+                            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fungsi pembantu buat generate struktur pohon acak
+        function tumbuhkanPohon(x, y) {
+            ctx.fillStyle = "#5C4033"; // Batang kayu cokelat tua
+            ctx.fillRect(x * BLOCK_SIZE, (y - 1) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.fillRect(x * BLOCK_SIZE, (y - 2) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            
+            ctx.fillStyle = "#228B22"; // Daun pohon hijau tua
+            ctx.fillRect((x - 1) * BLOCK_SIZE, (y - 3) * BLOCK_SIZE, BLOCK_SIZE * 3, BLOCK_SIZE);
+            ctx.fillRect(x * BLOCK_SIZE, (y - 4) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+
+        // Generate dunia pertama kali saat web dibuka
+        generateTerrain();
+    </script>
 </body>
 </html>
+
