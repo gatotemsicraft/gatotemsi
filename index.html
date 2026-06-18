@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Hub Keren</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1 { color: #38bdf8; margin-bottom: 5px; }
+        p { color: #94a3b8; margin-bottom: 30px; }
+        .menu-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .game-card {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            width: 220px;
+            padding: 20px;
+            text-align: center;
+            transition: 0.3s;
+            text-decoration: none;
+            color: inherit;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: #38bdf8;
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2);
+        }
+        .game-icon { font-size: 48px; margin-bottom: 10px; }
+        .game-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; color: #f8fafc; }
+        .game-desc { font-size: 14px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 GAME LEK UMAN KREPTERAN</h1>
+    <p>Pilih game yang ingin kamu mainkan di bawah ini!</p>
+
+    <div class="menu-container">
+        <!-- Game 1 -->
+        <a href="game_mancing.html" class="game-card">
+            <div class="game-icon">🎣</div>
+            <div class="game-title">Super Fishing</div>
+            <div class="game-desc">Mancing ikan langka, upgrade joran, dan jadi nelayan sukses!</div>
+        </a>
+
+        <!-- Game 2 -->
+        <a href="game_clicker.html" class="game-card">
+            <div class="game-icon">⛏️</div>
+            <div class="game-title">Gold Miner Clicker</div>
+            <div class="game-desc">Klik batu meteor untuk menambang emas secara instan.</div>
+        </a>
+
+        <!-- Game 3 -->
+        <a href="game_tebak.html" class="game-card">
+            <div class="game-icon">🎲</div>
+            <div class="game-title">Tebak Angka</div>
+            <div class="game-desc">Uji keberuntunganmu menebak angka misterius bos!</div>
+        </a>
+    </div>
+
+</body>
+</html>
+
