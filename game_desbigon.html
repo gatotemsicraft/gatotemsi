@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Endless Defender</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none; /* Mencegah layar ke-scroll di HP */
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .gold { color: #ffd700; }
+        .day { color: #fff; font-size: 24px; text-align: center; flex-grow: 1;}
+        .hp-bar-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #hp-bar {
+            width: 100%;
+            height: 100%;
+            background: #ff3333;
+            transition: width 0.2s;
+        }
+        #upgrade-menu {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background: #4caf50;
+            color: white;
+            border: 2px solid #2e7d32;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2e7d32;
+        }
+        button:active {
+            box-shadow: 0 0 0 #2e7d32;
+            transform: translateY(4px);
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0 #000;
+            display: none;
+            pointer-events: auto;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="gold">🪙 <span id="gold-val">0</span></div>
+            <div class="day">DAY <span id="day-val">1</span></div>
+            <div style="width: 50px;"></div> <!-- Spacer -->
+        </div>
+        <div class="hp-bar-container">
+            <div id="hp-bar"></div>
+        </div>
+        <div id="upgrade-menu">
+            <button id="btn-dmg" onclick="upgradeDamage()">⚔️ Dmg (50G)</button>
+            <button id="btn-heal" onclick="healWall()">❤️ Heal (30G)</button>
+        </div>
+        <div id="game-over">
+            CASTLE DESTROYED!<br>
+            <button onclick="location.reload()" style="margin-top: 20px;">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Game State
+        let gameActive = true;
+        let gold = 0;
+        let day = 1;
+        let frameCount = 0;
+        
+        // Player / Wall Stats
+        const player = {
+            x: window.innerWidth * 0.1, // 10% dari kiri
+            y: window.innerHeight / 2,
+            maxHp: 100,
+            hp: 100,
+            damage: 10,
+            projectileSpeed: 15,
+            upgradeDmgCost: 50,
+            healCost: 30
+        };
+
+        const projectiles = [];
+        const enemies = [];
+        const particles = [];
+
+        // UI Elements
+        const goldEl = document.getElementById('gold-val');
+        const dayEl = document.getElementById('day-val');
+        const hpBar = document.getElementById('hp-bar');
+        const btnDmg = document.getElementById('btn-dmg');
+
+        // Classes
+        class Projectile {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.radius = 4;
+                const angle = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle) * player.projectileSpeed;
+                this.vy = Math.sin(angle) * player.projectileSpeed;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#0ff';
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset
+            }
+        }
+
+        class Enemy {
+            constructor(hpMultiplier, speedMultiplier) {
+                this.x = canvas.width + 50;
+                this.y = (canvas.height * 0.3) + Math.random() * (canvas.height * 0.5);
+                this.width = 30;
+                this.height = 30;
+                this.speed = (1 + Math.random() * 1.5) * speedMultiplier;
+                this.maxHp = 20 * hpMultiplier;
+                this.hp = this.maxHp;
+                this.color = `hsl(${Math.random() * 60 + 90}, 70%, 50%)`; // Warna hijau monster
+            }
+            update() {
+                this.x -= this.speed;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // HP Bar musuh
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y - 10, this.width, 4);
+                ctx.fillStyle = '#0f0';
+                ctx.fillRect(this.x, this.y - 10, this.width * (this.hp / this.maxHp), 4);
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 5;
+                this.vy = (Math.random() - 0.5) * 5;
+                this.life = 1;
+                this.color = color;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.05;
+            }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 4, 4);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Controls (Support Touch & Mouse)
+        function shoot(targetX, targetY) {
+            if (!gameActive) return;
+            projectiles.push(new Projectile(player.x + 20, player.y, targetX, targetY));
+        }
+
+        window.addEventListener('mousedown', (e) => {
+            if(e.target.tagName !== 'BUTTON') shoot(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('touchstart', (e) => {
+            if(e.target.tagName !== 'BUTTON') {
+                shoot(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        // Upgrades
+        window.upgradeDamage = function() {
+            if (gold >= player.upgradeDmgCost) {
+                gold -= player.upgradeDmgCost;
+                player.damage += 5;
+                player.upgradeDmgCost = Math.floor(player.upgradeDmgCost * 1.5);
+                btnDmg.innerText = `⚔️ Dmg (${player.upgradeDmgCost}G)`;
+                updateUI();
+            }
+        }
+
+        window.healWall = function() {
+            if (gold >= player.healCost && player.hp < player.maxHp) {
+                gold -= player.healCost;
+                player.hp = Math.min(player.maxHp, player.hp + 25);
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            goldEl.innerText = gold;
+            hpBar.style.width = (player.hp / player.maxHp) * 100 + '%';
+        }
+
+        // Spawn Logic
+        function spawnEnemies() {
+            let spawnRate = Math.max(20, 100 - (day * 2)); // Makin kecil makin sering
+            if (frameCount % spawnRate === 0) {
+                let hpMult = 1 + (day * 0.2);
+                let speedMult = 1 + (day * 0.05);
+                enemies.push(new Enemy(hpMult, speedMult));
+            }
+            
+            // Pindah hari tiap 600 frame (~10 detik)
+            if (frameCount % 600 === 0 && frameCount !== 0) {
+                day++;
+                dayEl.innerText = day;
+            }
+        }
+
+        // Main Game Loop
+        function loop() {
+            if (!gameActive) return;
+
+            // Clear Screen
+            ctx.fillStyle = '#222831'; // Background color
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Gambar Garis/Tembok pertahanan
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(player.x, canvas.height * 0.2, 20, canvas.height * 0.7);
+
+            // Gambar Defender (Player)
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(player.x - 10, player.y, 15, 0, Math.PI*2);
+            ctx.fill();
+
+            spawnEnemies();
+
+            // Update & Draw Projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.update();
+                p.draw();
+                
+                // Hapus kalau keluar layar
+                if (p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            // Update & Draw Enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                e.update();
+                e.draw();
+
+                // Deteksi tabrakan proyektil vs musuh
+                for (let j = projectiles.length - 1; j >= 0; j--) {
+                    let p = projectiles[j];
+                    if (p.x > e.x && p.x < e.x + e.width && p.y > e.y && p.y < e.y + e.height) {
+                        e.hp -= player.damage;
+                        projectiles.splice(j, 1);
+                        
+                        // Efek partikel kena hit
+                        for(let k=0; k<3; k++) particles.push(new Particle(p.x, p.y, '#ffeb3b'));
+
+                        if (e.hp <= 0) {
+                            gold += Math.floor(5 + day);
+                            enemies.splice(i, 1);
+                            updateUI();
+                            // Efek ledakan
+                            for(let k=0; k<10; k++) particles.push(new Particle(e.x + e.width/2, e.y + e.height/2, '#ff5722'));
+                            break;
+                        }
+                    }
+                }
+
+                // Musuh nabrak tembok
+                if (e.x <= player.x + 20 && e.hp > 0) {
+                    player.hp -= 5;
+                    enemies.splice(i, 1);
+                    updateUI();
+                    
+                    // Efek tembok dihantam
+                    for(let k=0; k<15; k++) particles.push(new Particle(player.x + 20, e.y + 15, '#fff'));
+
+                    if (player.hp <= 0) {
+                        gameActive = false;
+                        document.getElementById('game-over').style.display = 'block';
+                    }
+                }
+            }
+
+            // Update Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            frameCount++;
+            requestAnimationFrame(loop);
+        }
+
+        // Start Game
+        updateUI();
+        loop();
+    </script>
+</body>
+</html>
