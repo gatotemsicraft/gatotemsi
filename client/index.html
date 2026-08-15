@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mancing Mabar — Pixel Multiplayer Fishing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== LOBBY OVERLAY ===== -->
+  <div id="lobby">
+    <div class="lobby-card">
+      <div class="rod-icon">🎣</div>
+      <h1>MANCING&nbsp;MABAR</h1>
+      <p class="tag">pixel fishing, rame-rame bareng temen</p>
+
+      <label class="field">
+        <span>Nama pemancing</span>
+        <input id="nameInput" maxlength="16" placeholder="cth: Budi" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>Kode dermaga (room)</span>
+        <input id="roomInput" maxlength="24" placeholder="dermaga-utama" autocomplete="off" />
+      </label>
+      <p class="hint">Pakai kode yang sama dengan temanmu biar masuk kolam yang sama.</p>
+
+      <button id="editSkinBtn" class="btn secondary">🎨 Gambar Skin (16×16)</button>
+      <div id="skinPreviewWrap">
+        <canvas id="skinPreviewCanvas" width="64" height="64"></canvas>
+        <span class="preview-label">Skin kamu</span>
+      </div>
+
+      <button id="joinBtn" class="btn primary">LEMPAR KAIL &amp; MULAI</button>
+      <p id="lobbyError" class="error"></p>
+    </div>
+  </div>
+
+  <!-- ===== SKIN EDITOR MODAL ===== -->
+  <div id="skinEditorModal" class="hidden">
+    <div class="editor-card">
+      <h2>Editor Skin — 16×16 px</h2>
+      <div class="editor-body">
+        <div id="pixelGrid"></div>
+        <div class="editor-tools">
+          <div id="palette"></div>
+          <label class="field">
+            <span>Warna custom</span>
+            <input type="color" id="customColor" value="#ff6b6b" />
+          </label>
+          <button id="eraserBtn" class="btn tiny">🧹 Hapus titik</button>
+          <button id="clearAllBtn" class="btn tiny">🗑️ Bersihkan semua</button>
+          <div class="editor-preview">
+            <span>Preview</span>
+            <canvas id="editorPreview" width="96" height="96"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="editor-actions">
+        <button id="closeEditorBtn" class="btn secondary">Batal</button>
+        <button id="saveSkinBtn" class="btn primary">Simpan Skin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME UI (setelah join) ===== -->
+  <div id="gameUI" class="hidden">
+    <div id="gameContainer"></div>
+
+    <div id="sidebar">
+      <div class="panel">
+        <h3>🏆 Papan Skor</h3>
+        <ul id="leaderboard"></ul>
+      </div>
+
+      <div class="panel" id="chatPanel">
+        <h3>💬 Obrolan Dermaga</h3>
+        <ul id="chatLog"></ul>
+        <form id="chatForm">
+          <input id="chatInput" maxlength="140" placeholder="Ketik pesan..." autocomplete="off" />
+          <button type="submit" class="btn tiny">Kirim</button>
+        </form>
+      </div>
+
+      <button id="openEditorInGame" class="btn secondary small">🎨 Ubah Skin</button>
+      <p class="controls-hint">
+        Panah / WASD: gerak &nbsp;•&nbsp; Spasi di dekat air: mancing
+      </p>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="skinEditor.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
