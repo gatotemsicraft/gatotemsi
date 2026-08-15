@@ -1,7 +1,6 @@
 // Mancing Mabar - Server
-// Express serves the static client, Socket.IO handles realtime multiplayer.
-
 const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -9,19 +8,38 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" } // longgarkan CORS supaya client bisa di-host terpisah (mis. GitHub Pages)
+  cors: { origin: "*" }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
-// Layani file client (index.html, game.js, dll) sebagai static site.
-app.use(express.static(path.join(__dirname, "..", "client")));
+// Auto-detect lokasi folder client di Railway
+const candidates = [
+  path.join(__dirname, "..", "client"),
+  path.join(__dirname, "client"),
+  path.join(process.cwd(), "client"),
+  path.join(process.cwd(), "..", "client"),
+  path.join(process.cwd(), "fishing-game", "client")
+];
 
-// ---- State di memory (cukup untuk skala kecil / mabar bareng teman) ----
-// rooms: Map<roomName, Map<socketId, playerData>>
+let clientPath = candidates.find(p => fs.existsSync(path.join(p, "index.html"))) || candidates[0];
+
+// Melayani file statis dari folder client yang ditemukan
+app.use(express.static(clientPath));
+
+// Route wildcard agar '/' selalu membuka index.html
+app.get("*", (req, res) => {
+  const indexPath = path.join(clientPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send(`Server jalan di port ${PORT}, tapi index.html tidak ditemukan. Path dicoba: ${clientPath}`);
+  }
+});
+
+// State room di memory
 const rooms = new Map();
-
-const MAX_SKIN_LENGTH = 20000; // batas aman untuk dataURL base64 16x16 png
+const MAX_SKIN_LENGTH = 20000;
 const MAX_NAME_LENGTH = 16;
 
 function getRoom(roomName) {
@@ -49,19 +67,17 @@ io.on("connection", (socket) => {
       x: 400 + Math.floor(Math.random() * 100),
       y: 300 + Math.floor(Math.random() * 60),
       facing: "down",
-      skin: null, // dataURL base64 png 16x16, null = pakai skin default di client
+      skin: null,
       score: 0
     };
     players.set(socket.id, player);
 
-    // Kirim state awal ke pemain yang baru join
     socket.emit("init", {
       selfId: socket.id,
       room: currentRoom,
       players: Array.from(players.values())
     });
 
-    // Kabari pemain lain di room yang sama
     socket.to(currentRoom).emit("playerJoined", player);
   });
 
