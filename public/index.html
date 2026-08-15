@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Multiplayer Sederhana</title>
+    <style>
+        body { text-align: center; font-family: sans-serif; background: #222; color: #fff; }
+        canvas { background: #111; border: 2px solid #fff; display: block; margin: 20px auto; }
+    </style>
+</head>
+<body>
+    <h1>Game Multiplayer Online</h1>
+    <p>Gunakan tombol Panah (Arrow Keys) untuk bergerak!</p>
+    <canvas id="gameCanvas" width="600" height="500"></canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let players = {};
+
+        socket.on('updatePlayers', (serverPlayers) => {
+            players = serverPlayers;
+            draw();
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let id in players) {
+                const p = players[id];
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 30, 30);
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const speed = 5;
+            let moveData = { x: 0, y: 0 };
+
+            if (e.key === 'ArrowUp') moveData.y = -speed;
+            if (e.key === 'ArrowDown') moveData.y = speed;
+            if (e.key === 'ArrowLeft') moveData.x = -speed;
+            if (e.key === 'ArrowRight') moveData.x = speed;
+
+            if (moveData.x !== 0 || moveData.y !== 0) {
+                socket.emit('move', moveData);
+            }
+        });
+    </script>
+</body>
+</html>
