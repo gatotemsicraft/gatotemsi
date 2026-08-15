@@ -3,52 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Multiplayer Sederhana</title>
-    <style>
-        body { text-align: center; font-family: sans-serif; background: #222; color: #fff; }
-        canvas { background: #111; border: 2px solid #fff; display: block; margin: 20px auto; }
-    </style>
+    <title>Web Pixel Fishing RPG MMO</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <h1>Game Multiplayer Online</h1>
-    <p>Gunakan tombol Panah (Arrow Keys) untuk bergerak!</p>
-    <canvas id="gameCanvas" width="600" height="500"></canvas>
+    <div id="game-container"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+    <div id="ui-overlay">
+        <div id="stats-panel">
+            <h3 id="player-title">Angler Novice</h3>
+            <p>Coins: <span id="coin-val">100</span> G</p>
+            <p>Total Ikan: <span id="fish-val">0</span></p>
+            <button onclick="castRod()">🎣 Mancing (Cast)</button>
+            <button onclick="openShop()">🛒 Shop / Gacha Rod</button>
+        </div>
 
-        let players = {};
+        <div id="skin-panel">
+            <label>Upload Skin (16x16 PNG):</label>
+            <input type="file" id="skinInput" accept="image/png" onchange="uploadSkin(event)">
+        </div>
 
-        socket.on('updatePlayers', (serverPlayers) => {
-            players = serverPlayers;
-            draw();
-        });
+        <div id="chat-panel">
+            <div id="chat-box"></div>
+            <input type="text" id="chatInput" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter') sendChat()">
+        </div>
+    </div>
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let id in players) {
-                const p = players[id];
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, p.y, 30, 30);
-            }
-        }
+    <!-- Retro Chiptune Background Music & Sound SFX via Web Audio CDN -->
+    <audio id="bgm" loop autoplay>
+        <source src="https://cdn.freesound.org/previews/561/561135_11861866-lq.mp3" type="audio/mp3">
+    </audio>
 
-        window.addEventListener('keydown', (e) => {
-            const speed = 5;
-            let moveData = { x: 0, y: 0 };
-
-            if (e.key === 'ArrowUp') moveData.y = -speed;
-            if (e.key === 'ArrowDown') moveData.y = speed;
-            if (e.key === 'ArrowLeft') moveData.x = -speed;
-            if (e.key === 'ArrowRight') moveData.x = speed;
-
-            if (moveData.x !== 0 || moveData.y !== 0) {
-                socket.emit('move', moveData);
-            }
-        });
-    </script>
+    <script src="game.js"></script>
 </body>
 </html>
