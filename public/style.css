@@ -1,0 +1,54 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    font-family: 'Courier New', Courier, monospace;
+    color: #fff;
+    overflow: hidden;
+}
+
+#game-container {
+    width: 100vw;
+    height: 100vh;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    pointer-events: none;
+}
+
+#stats-panel, #skin-panel, #chat-panel {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.75);
+    border: 2px solid #555;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+#chat-panel {
+    position: absolute;
+    bottom: 20px;
+    left: 10px;
+    width: 300px;
+}
+
+#chat-box {
+    height: 100px;
+    overflow-y: auto;
+    border-bottom: 1px solid #444;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+button {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: inherit;
+}
+button:hover { background: #45a049; }
