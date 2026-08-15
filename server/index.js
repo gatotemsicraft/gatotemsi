@@ -1,4 +1,4 @@
-// Mancing Mabar - Server Auto Path & Host Fix
+// Mancing Mabar - Server Auto Path Fix
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
@@ -13,13 +13,14 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 8080;
 
-// Cari folder client di semua lokasi struktur Railway
+// Daftar jalur pencarian folder client di container Railway
 const candidates = [
   path.join(__dirname, "..", "client"),
-  path.join(__dirname, "..", "fishing-game", "client"),
-  path.join(process.cwd(), "client"),
+  path.join(__dirname, "client"),
   path.join(process.cwd(), "fishing-game", "client"),
-  path.join(__dirname, "client")
+  path.join(process.cwd(), "client"),
+  "/app/fishing-game/client",
+  "/app/client"
 ];
 
 let clientPath = candidates.find(p => fs.existsSync(path.join(p, "index.html"))) || candidates[0];
@@ -31,11 +32,12 @@ app.get("*", (req, res) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send(`Path client tidak ditemukan: ${clientPath}`);
+    // Kalau masih gagal, tampilkan lokasi persis tempat file berada
+    res.status(404).send(`Path client tidak ditemukan. Server membaca: ${clientPath}`);
   }
 });
 
-// Socket.io Setup
+// Socket.io Multiplayer Wiring
 const rooms = new Map();
 
 function getRoom(roomName) {
@@ -107,7 +109,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// PERBAIKAN UTAMA: Binding ke '0.0.0.0' wajib untuk Railway
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server jalan di port ${PORT}`);
 });
